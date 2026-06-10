@@ -42,13 +42,13 @@ try {
     };
   }
 
-  if (firebaseConfig) {
+  if (firebaseConfig && firebaseConfig.apiKey) {
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
   }
 } catch (error) {
-  console.warn("Firebase belum dikonfigurasi. Berjalan dalam mode In-Memory.", error);
+  console.warn("Firebase belum dikonfigurasi.", error);
 }
 
 // --- KONFIGURASI HOTEL ---
@@ -182,7 +182,7 @@ const RoomManager = ({ rooms, setRooms, saveToDb, deleteFromDb }) => {
       setCurrentRoom({ id: null, number: '', type: 'VIP 1', price: '' });
     } catch (err) {
       setErrorMsg(err.message);
-      setTimeout(() => setErrorMsg(''), 5000);
+      setTimeout(() => setErrorMsg(''), 6000);
     }
   };
 
@@ -191,7 +191,7 @@ const RoomManager = ({ rooms, setRooms, saveToDb, deleteFromDb }) => {
       await deleteFromDb('rooms', id);
     } catch (err) {
       setErrorMsg(err.message);
-      setTimeout(() => setErrorMsg(''), 5000);
+      setTimeout(() => setErrorMsg(''), 6000);
     }
   };
 
@@ -360,7 +360,7 @@ const CreateInvoice = ({ rooms, invoiceCount, saveToDb }) => {
       });
     } catch (err) {
       setErrorMsg(err.message);
-      setTimeout(() => setErrorMsg(''), 6000);
+      setTimeout(() => setErrorMsg(''), 7000);
     }
   };
 
@@ -540,7 +540,7 @@ const InvoiceHistory = ({ invoices, onPrint, deleteFromDb }) => {
     } catch (err) {
       setErrorMsg(err.message);
       setDeleteConfirm(null);
-      setTimeout(() => setErrorMsg(''), 6000);
+      setTimeout(() => setErrorMsg(''), 7000);
     }
   };
 
@@ -878,19 +878,35 @@ export default function App() {
   }, [user]);
 
   const saveToDb = async (collectionName, data) => {
-    if (!db || !user) {
-      throw new Error("Sistem belum terhubung ke Cloud Database. Cek koneksi internet atau setelan Firebase Anda.");
+    if (!db) {
+      throw new Error("Kunci Firebase (API Key) salah/tidak terdeteksi di Vercel.");
     }
-    const docRef = doc(db, 'artifacts', appId, 'public', 'data', collectionName, data.id.toString());
-    await setDoc(docRef, data);
+    if (!user) {
+      throw new Error("Fitur Login Anonim (Authentication) belum aktif di Firebase.");
+    }
+    
+    try {
+      const docRef = doc(db, 'artifacts', appId, 'public', 'data', collectionName, data.id.toString());
+      await setDoc(docRef, data);
+    } catch (err) {
+      throw new Error(err.message.includes("permission") ? "Aturan Database (Rules) belum di-Publish." : `Gagal: ${err.message}`);
+    }
   };
 
   const deleteFromDb = async (collectionName, id) => {
-    if (!db || !user) {
-      throw new Error("Sistem belum terhubung ke Cloud Database. Cek koneksi internet atau setelan Firebase Anda.");
+    if (!db) {
+      throw new Error("Kunci Firebase (API Key) salah/tidak terdeteksi di Vercel.");
     }
-    const docRef = doc(db, 'artifacts', appId, 'public', 'data', collectionName, id.toString());
-    await deleteDoc(docRef);
+    if (!user) {
+      throw new Error("Fitur Login Anonim (Authentication) belum aktif di Firebase.");
+    }
+
+    try {
+      const docRef = doc(db, 'artifacts', appId, 'public', 'data', collectionName, id.toString());
+      await deleteDoc(docRef);
+    } catch (err) {
+      throw new Error(err.message.includes("permission") ? "Aturan Database (Rules) belum di-Publish." : `Gagal: ${err.message}`);
+    }
   };
 
   return (
