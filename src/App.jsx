@@ -734,20 +734,30 @@ export default function App() {
   }, [user]);
 
   const saveToDb = async (collectionName, data) => {
-    if (db && user) {
-      const docRef = doc(db, 'artifacts', appId, 'public', 'data', collectionName, data.id.toString());
-      await setDoc(docRef, data);
-    } else {
-      if (collectionName === 'invoices') setInvoices(prev => [...prev, data]);
+    try {
+      if (db && user) {
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', collectionName, data.id.toString());
+        await setDoc(docRef, data);
+      } else {
+        throw new Error("Koneksi DB belum siap");
+      }
+    } catch (error) {
+      console.warn(`Database cloud tertunda (${collectionName}), menyimpan sementara ke memori lokal...`);
+      if (collectionName === 'invoices') setInvoices(prev => [...prev.filter(i => i.id !== data.id), data]);
       if (collectionName === 'rooms') setRooms(prev => [...prev.filter(r => r.id !== data.id), data]);
     }
   };
 
   const deleteFromDb = async (collectionName, id) => {
-    if (db && user) {
-      const docRef = doc(db, 'artifacts', appId, 'public', 'data', collectionName, id.toString());
-      await deleteDoc(docRef);
-    } else {
+    try {
+      if (db && user) {
+        const docRef = doc(db, 'artifacts', appId, 'public', 'data', collectionName, id.toString());
+        await deleteDoc(docRef);
+      } else {
+        throw new Error("Koneksi DB belum siap");
+      }
+    } catch (error) {
+      console.warn(`Penghapusan cloud tertunda (${collectionName}), menghapus dari memori lokal...`);
       if (collectionName === 'invoices') setInvoices(prev => prev.filter(i => i.id !== id));
       if (collectionName === 'rooms') setRooms(prev => prev.filter(r => r.id !== id));
     }
