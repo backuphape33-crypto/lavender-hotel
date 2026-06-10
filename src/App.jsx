@@ -13,7 +13,10 @@ import {
   CheckCircle,
   Menu,
   Download,
-  AlertCircle
+  AlertCircle,
+  LogOut,
+  Lock,
+  Search
 } from 'lucide-react';
 
 // --- IMPORT FIREBASE ---
@@ -24,6 +27,7 @@ import { getFirestore, collection, onSnapshot, doc, setDoc, deleteDoc } from 'fi
 // --- SETUP DATABASE FIREBASE ---
 let app, auth, db;
 const appId = typeof __app_id !== 'undefined' ? __app_id : 'hotel-lavender-app';
+let currentApiKey = '';
 
 try {
   const configStr = typeof __firebase_config !== 'undefined' ? __firebase_config : null;
@@ -43,6 +47,7 @@ try {
   }
 
   if (firebaseConfig && firebaseConfig.apiKey) {
+    currentApiKey = firebaseConfig.apiKey;
     app = initializeApp(firebaseConfig);
     auth = getAuth(app);
     db = getFirestore(app);
@@ -135,6 +140,99 @@ const generateInvoiceNumber = (sequenceCounter) => {
   const romanMonth = romanMonths[date.getMonth()];
   const formattedSequence = sequenceCounter.toString().padStart(4, '0');
   return `INV/${year}/${romanMonth}/${formattedSequence}`;
+};
+
+const LoginScreen = ({ onLogin }) => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    
+    // Database Akun
+    const credentials = {
+      lavender: { pass: 'lavender2026', role: 'admin', name: 'Admin Lavender' },
+      billa: { pass: 'billa123', role: 'resepsionis', name: 'Billa' },
+      alit: { pass: 'alit123', role: 'resepsionis', name: 'Alit' },
+      tabhita: { pass: 'tabhita123', role: 'resepsionis', name: 'Tabhita' }
+    };
+
+    const inputUser = username.toLowerCase().trim();
+    const validUser = credentials[inputUser];
+
+    if (validUser && validUser.pass === password) {
+      onLogin({ username: inputUser, role: validUser.role, name: validUser.name });
+    } else {
+      setError('Username atau password salah!');
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-fuchsia-900 to-purple-900 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-pink-500 to-purple-600"></div>
+        <div className="text-center mb-8">
+          <div className="bg-purple-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-8 h-8 text-purple-600" />
+          </div>
+          <h1 className="text-2xl font-bold text-gray-800">Login Sistem</h1>
+          <p className="text-gray-500 text-sm mt-1">Hotel Lavender Management</p>
+        </div>
+
+        {error && (
+          <div className="bg-red-50 text-red-600 p-3 rounded-lg text-sm mb-4 text-center border border-red-100">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleLogin} className="space-y-5">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+            <input 
+              type="text" 
+              required 
+              className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="Masukkan username"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+            <input 
+              type="password" 
+              required 
+              className="w-full p-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none transition-all"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Masukkan password"
+            />
+          </div>
+          <button 
+            type="submit" 
+            className="w-full py-3 px-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white font-bold rounded-xl hover:from-purple-700 hover:to-pink-700 transition-all shadow-md mt-2"
+          >
+            Masuk
+          </button>
+        </form>
+        
+        <div className="mt-8 pt-6 border-t border-gray-100 text-xs text-gray-400 text-center">
+          <p className="font-semibold text-gray-500 mb-1">Daftar Akun Terdaftar:</p>
+          <div className="grid grid-cols-2 gap-2 mt-2">
+            <div className="text-left bg-purple-50 p-2 rounded">
+              <span className="block font-bold text-purple-700">Admin</span>
+              lavender
+            </div>
+            <div className="text-left bg-gray-50 p-2 rounded">
+              <span className="block font-bold text-gray-600">Resepsionis</span>
+              billa / alit / tabhita
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const Dashboard = () => {
@@ -313,7 +411,7 @@ const RoomManager = ({ rooms, setRooms, saveToDb, deleteFromDb }) => {
   );
 };
 
-const CreateInvoice = ({ rooms, invoiceCount, saveToDb }) => {
+const CreateInvoice = ({ rooms, invoiceCount, saveToDb, currentUser }) => {
   const [successMsg, setSuccessMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [formData, setFormData] = useState({
@@ -340,6 +438,7 @@ const CreateInvoice = ({ rooms, invoiceCount, saveToDb }) => {
       id: Date.now(),
       invoiceNumber: generateInvoiceNumber(invoiceCount + 1),
       printDate: new Date().toISOString(),
+      createdBy: currentUser?.name || 'Resepsionis', // Menyimpan nama pembuat
       ...formData,
       nights: nights,
       roomNumber: selectedRoom.number,
@@ -525,10 +624,15 @@ const CreateInvoice = ({ rooms, invoiceCount, saveToDb }) => {
   );
 };
 
-const InvoiceHistory = ({ invoices, onPrint, deleteFromDb }) => {
+const InvoiceHistory = ({ invoices, onPrint, deleteFromDb, role }) => {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [toastMsg, setToastMsg] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
+
+  // --- STATE UNTUK FILTER DAN PENCARIAN ---
+  const [searchTerm, setSearchTerm] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
+  const [limit, setLimit] = useState(15);
 
   const confirmDelete = async () => {
     if (!deleteConfirm) return;
@@ -553,6 +657,29 @@ const InvoiceHistory = ({ invoices, onPrint, deleteFromDb }) => {
     downloadAnchorNode.click();
     downloadAnchorNode.remove();
   };
+
+  // --- LOGIKA PENYARINGAN DATA (FILTERING) ---
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter(inv => {
+      // 1. Filter Pencarian Teks (Nama atau No Invoice)
+      const matchSearch = inv.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          inv.guestName.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      // 2. Filter Tanggal Cetak
+      let matchDate = true;
+      if (dateFilter) {
+        const invDate = new Date(inv.printDate);
+        // Mengubah ke format YYYY-MM-DD sesuai dengan input type date
+        const localDateStr = `${invDate.getFullYear()}-${String(invDate.getMonth() + 1).padStart(2, '0')}-${String(invDate.getDate()).padStart(2, '0')}`;
+        matchDate = localDateStr === dateFilter;
+      }
+
+      return matchSearch && matchDate;
+    }).sort((a, b) => b.id - a.id); // Urutkan dari yang terbaru
+  }, [invoices, searchTerm, dateFilter]);
+
+  // --- LOGIKA PEMBATASAN DATA (LIMIT) ---
+  const displayedInvoices = limit === 'all' ? filteredInvoices : filteredInvoices.slice(0, Number(limit));
 
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 relative">
@@ -608,14 +735,59 @@ const InvoiceHistory = ({ invoices, onPrint, deleteFromDb }) => {
         </div>
       )}
 
-      <div className="p-4 sm:p-6 border-b border-gray-100 flex justify-between items-center">
+      <div className="p-4 sm:p-6 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Riwayat Invoice</h2>
           <p className="text-gray-500 text-xs sm:text-sm mt-1">Daftar semua invoice yang pernah diterbitkan.</p>
         </div>
-        <button onClick={handleExport} className="flex items-center px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors shadow-sm">
-          <Download className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Backup Data</span>
+        <button onClick={handleExport} className="w-full sm:w-auto justify-center flex items-center px-4 py-2 bg-green-600 text-white font-semibold text-sm rounded-xl hover:bg-green-700 transition-colors shadow-sm">
+          <Download className="w-4 h-4 mr-2" /> <span className="inline">Backup Data</span>
         </button>
+      </div>
+
+      {/* --- PANEL FILTER & PENCARIAN --- */}
+      <div className="p-4 bg-gray-50 border-b border-gray-100 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Kolom Pencarian */}
+        <div className="relative">
+          <Search className="w-4 h-4 absolute left-3 top-3 text-gray-400" />
+          <input 
+            type="text" 
+            placeholder="Cari Nama / No. Invoice..." 
+            className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none transition-all"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        
+        {/* Kolom Filter Tanggal */}
+        <div className="relative">
+          <input 
+            type="date" 
+            title="Filter berdasarkan tanggal"
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none transition-all text-gray-600"
+            value={dateFilter}
+            onChange={(e) => setDateFilter(e.target.value)}
+          />
+          {dateFilter && (
+            <button onClick={() => setDateFilter('')} className="absolute right-2 top-2.5 text-gray-400 hover:text-red-500 bg-white" title="Hapus Filter Tanggal">
+              <X className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Kolom Limit Data */}
+        <div>
+          <select 
+            className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-purple-500 outline-none transition-all text-gray-700 font-medium"
+            value={limit}
+            onChange={(e) => setLimit(e.target.value)}
+          >
+            <option value={15}>Tampilkan 15 Teratas</option>
+            <option value={20}>Tampilkan 20 Teratas</option>
+            <option value={50}>Tampilkan 50 Teratas</option>
+            <option value="all">Tampilkan Semua Data</option>
+          </select>
+        </div>
       </div>
       
       <div className="overflow-x-auto">
@@ -630,9 +802,9 @@ const InvoiceHistory = ({ invoices, onPrint, deleteFromDb }) => {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {invoices.length === 0 ? (
-              <tr><td colSpan="5" className="px-6 py-8 text-center text-gray-500">Belum ada invoice yang diterbitkan.</td></tr>
-            ) : [...invoices].sort((a,b) => b.id - a.id).map((inv) => (
+            {displayedInvoices.length === 0 ? (
+              <tr><td colSpan="5" className="px-6 py-8 text-center text-gray-500">Data invoice tidak ditemukan.</td></tr>
+            ) : displayedInvoices.map((inv) => (
               <tr key={inv.id} className="hover:bg-gray-50 transition-colors">
                 <td className="px-4 sm:px-6 py-4 whitespace-nowrap font-medium text-purple-600 text-sm">{inv.invoiceNumber}</td>
                 <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-xs sm:text-sm text-gray-600">
@@ -646,24 +818,29 @@ const InvoiceHistory = ({ invoices, onPrint, deleteFromDb }) => {
                   {formatRupiah(inv.total)}
                 </td>
                 <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium flex justify-end gap-1 sm:gap-2">
-                  <button onClick={() => onPrint(inv)} className="text-gray-600 hover:text-purple-600 bg-gray-100 hover:bg-purple-50 p-1.5 sm:px-3 sm:py-1.5 rounded-md inline-flex items-center transition-colors" title="Cetak">
-                    <Printer className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Cetak</span>
-                  </button>
-                  <button onClick={() => setDeleteConfirm(inv)} className="text-red-600 hover:text-red-900 bg-red-50 p-1.5 sm:px-2 sm:py-1.5 rounded-md inline-flex items-center transition-colors" title="Hapus">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
+              <button onClick={() => onPrint(inv)} className="text-gray-600 hover:text-purple-600 bg-gray-100 hover:bg-purple-50 p-1.5 sm:px-3 sm:py-1.5 rounded-md inline-flex items-center transition-colors" title="Cetak">
+                <Printer className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Cetak</span>
+              </button>
+              {role === 'admin' && (
+                <button onClick={() => setDeleteConfirm(inv)} className="text-red-600 hover:text-red-900 bg-red-50 p-1.5 sm:px-2 sm:py-1.5 rounded-md inline-flex items-center transition-colors" title="Hapus">
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
         </table>
       </div>
     </div>
   );
 };
 
-const PrintLayout = ({ invoice, onCancel }) => {
+const PrintLayout = ({ invoice, onCancel, currentUser }) => {
   if (!invoice) return null;
+
+  // Nama pembuat invoice diprioritaskan dari riwayat database, jika tidak ada baru ambil user yg sedang login
+  const receptionistName = invoice.createdBy || currentUser?.name || 'Resepsionis';
 
   return (
     <div className="fixed inset-0 z-50 bg-gray-900 bg-opacity-75 flex items-center justify-center p-4 print:static print:bg-white print:block overflow-y-auto">
@@ -673,7 +850,7 @@ const PrintLayout = ({ invoice, onCancel }) => {
           @media print {
             @page { 
               size: A4; 
-              margin: 0; /* Margin 0 ini yang akan menghilangkan tanggal, judul, dan link vercel otomatis */
+              margin: 0; 
             }
             body {
               -webkit-print-color-adjust: exact;
@@ -683,7 +860,7 @@ const PrintLayout = ({ invoice, onCancel }) => {
             #invoice-print-area {
               width: 100% !important;
               max-width: 100% !important;
-              padding: 15mm !important; /* Memberi jarak batas tepi agar aman & tidak terpotong printer */
+              padding: 15mm !important; 
               margin: 0 !important;
               box-shadow: none !important;
             }
@@ -785,8 +962,8 @@ const PrintLayout = ({ invoice, onCancel }) => {
             <p className="text-gray-800 mb-20 text-xs sm:text-sm">
               Sungai Danau, ........................ {new Date(invoice.printDate).getFullYear()}
             </p>
-            <p className="mt-2 text-sm font-bold text-gray-800 whitespace-nowrap">
-              ( ........................................ )
+            <p className="mt-2 text-sm font-bold text-gray-800 whitespace-nowrap uppercase">
+              ( {receptionistName} )
             </p>
             <p className="text-gray-500 text-xs mt-1">Resepsionis</p>
           </div>
@@ -802,8 +979,17 @@ const PrintLayout = ({ invoice, onCancel }) => {
 };
 
 export default function App() {
+  const [authUser, setAuthUser] = useState(() => {
+    const saved = localStorage.getItem('lavender_user');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { return null; }
+    }
+    return null;
+  });
+
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isLogoutModalOpen, setIsLogoutModalOpen] = useState(false);
   
   const [rooms, setRooms] = useState(DEFAULT_ROOMS);
   const [invoices, setInvoices] = useState([]);
@@ -815,16 +1001,16 @@ export default function App() {
   const [debugMsg, setDebugMsg] = useState('Memeriksa koneksi ke Cloud Database...');
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'create', label: 'Buat Invoice', icon: FilePlus },
-    { id: 'history', label: 'Riwayat Invoice', icon: History },
-    { id: 'rooms', label: 'Data Kamar', icon: BedDouble },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'resepsionis'] },
+    { id: 'create', label: 'Buat Invoice', icon: FilePlus, roles: ['admin', 'resepsionis'] },
+    { id: 'history', label: 'Riwayat Invoice', icon: History, roles: ['admin', 'resepsionis'] },
+    { id: 'rooms', label: 'Data Kamar', icon: BedDouble, roles: ['admin'] },
   ];
 
-  useEffect(() => {
-    const currentMenu = menuItems.find(m => m.id === activeTab);
-    document.title = `${currentMenu ? currentMenu.label : 'App'} | ${HOTEL_INFO.name}`;
+  const visibleMenuItems = menuItems.filter(m => m.roles.includes(authUser?.role));
 
+  useEffect(() => {
+    const currentMenu = visibleMenuItems.find(m => m.id === activeTab) || visibleMenuItems[0];
     let link = document.querySelector("link[rel~='icon']");
     if (!link) {
       link = document.createElement('link');
@@ -851,10 +1037,12 @@ export default function App() {
         }
       } catch (err) {
         console.error("Auth error:", err);
-        if (err.message.includes('auth/unauthorized-domain')) {
+        const keyHint = currentApiKey ? currentApiKey.substring(0, 7) + "..." : "Kosong";
+        
+        if (err.code === 'auth/configuration-not-found') {
+           setDebugMsg(`🔴 Cek Kunci API Vercel! Kunci yg terpasang berawalan: "${keyHint}". Jika beda dengan "lavender-data-baru", ganti di Vercel dan Redeploy!`);
+        } else if (err.code === 'auth/unauthorized-domain') {
           setDebugMsg(`🔴 Akses Ditolak: Tambahkan domain "${window.location.hostname}" ke menu Authorized Domains di Firebase.`);
-        } else if (err.message.includes('configuration-not-found')) {
-           setDebugMsg(`🔴 Akses Ditolak: Aktifkan opsi "Anonymous" di menu Sign-in Method Firebase.`);
         } else {
           setDebugMsg(`🔴 Error Login Database: ${err.message}`);
         }
@@ -900,7 +1088,7 @@ export default function App() {
   const saveToDb = async (collectionName, data) => {
     if (db) {
       if (!user) {
-        throw new Error("Akses ditolak Firebase: Pastikan Domain Vercel Anda sudah ditambahkan ke menu Authorized Domains di Firebase Authentication.");
+        throw new Error("Akses ditolak Firebase: Pastikan Kunci API Vercel sudah benar dan Domain sudah didaftarkan.");
       }
       const docRef = doc(db, 'artifacts', appId, 'public', 'data', collectionName, data.id.toString());
       await setDoc(docRef, data);
@@ -913,7 +1101,7 @@ export default function App() {
   const deleteFromDb = async (collectionName, id) => {
     if (db) {
       if (!user) {
-        throw new Error("Akses ditolak Firebase: Pastikan Domain Vercel Anda sudah ditambahkan ke menu Authorized Domains di Firebase Authentication.");
+        throw new Error("Akses ditolak Firebase: Pastikan Kunci API Vercel sudah benar dan Domain sudah didaftarkan.");
       }
       const docRef = doc(db, 'artifacts', appId, 'public', 'data', collectionName, id.toString());
       await deleteDoc(docRef);
@@ -923,6 +1111,22 @@ export default function App() {
     }
   };
 
+  const handleLogin = (userData) => {
+    localStorage.setItem('lavender_user', JSON.stringify(userData));
+    setAuthUser(userData);
+    setActiveTab('dashboard');
+  };
+
+  const confirmLogout = () => {
+    localStorage.removeItem('lavender_user');
+    setAuthUser(null);
+    setIsLogoutModalOpen(false);
+  };
+
+  if (!authUser) {
+    return <LoginScreen onLogin={handleLogin} />;
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 flex font-sans overflow-hidden">
       
@@ -930,7 +1134,27 @@ export default function App() {
         <PrintLayout 
           invoice={printInvoiceData} 
           onCancel={() => setPrintInvoiceData(null)} 
+          currentUser={authUser}
         />
+      )}
+
+      {/* Modal Konfirmasi Logout */}
+      {isLogoutModalOpen && (
+        <div className="fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-50 mb-4 mx-auto">
+              <LogOut className="w-6 h-6 text-red-500" />
+            </div>
+            <h3 className="text-lg font-bold text-center text-gray-900 mb-2">Keluar Sistem?</h3>
+            <p className="text-sm text-center text-gray-500 mb-6">
+              Sesi Anda akan diakhiri dan Anda harus login kembali untuk masuk ke sistem.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setIsLogoutModalOpen(false)} className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-semibold text-sm rounded-xl hover:bg-gray-200 transition-colors">Batal</button>
+              <button onClick={confirmLogout} className="flex-1 px-4 py-2.5 bg-red-600 text-white font-semibold text-sm rounded-xl hover:bg-red-700 transition-colors">Ya, Keluar</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {isMobileMenuOpen && (
@@ -940,25 +1164,28 @@ export default function App() {
         ></div>
       )}
 
-      <div className={`fixed inset-y-0 left-0 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition duration-200 ease-in-out z-30 w-64 bg-gray-800 text-white flex flex-col print:hidden shadow-xl md:shadow-none`}>
+      <div className={`fixed inset-y-0 left-0 transform ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:relative md:translate-x-0 transition duration-200 ease-in-out z-30 w-64 bg-gradient-to-b from-fuchsia-900 to-purple-900 text-white flex flex-col print:hidden shadow-2xl md:shadow-none`}>
         
         <button 
           onClick={() => setIsMobileMenuOpen(false)}
-          className="absolute top-4 right-4 md:hidden text-gray-400 hover:text-white"
+          className="absolute top-4 right-4 md:hidden text-fuchsia-200 hover:text-white"
         >
           <X className="w-6 h-6" />
         </button>
 
         <div className="p-6">
-          <div className="flex items-center gap-3 mb-2 text-purple-300">
-            <img src={HOTEL_LOGO_URL} alt="Logo" className="w-8 h-8 rounded" />
+          <div className="flex items-center gap-3 mb-2 text-pink-200">
+            <img src={HOTEL_LOGO_URL} alt="Logo" className="w-8 h-8 rounded bg-white p-0.5" />
             <h1 className="text-xl font-bold tracking-wider">LAVENDER</h1>
           </div>
-          <p className="text-xs text-gray-400">Hotel Management System</p>
+          <p className="text-xs text-fuchsia-300">Hotel Management System</p>
+          <div className="mt-3 inline-block px-2 py-1 bg-white/10 rounded border border-white/20 text-[10px] uppercase tracking-widest text-pink-100 font-bold">
+            Akses: {authUser.role}
+          </div>
         </div>
 
-        <nav className="flex-1 mt-6">
-          {menuItems.map((item) => {
+        <nav className="flex-1 mt-4 space-y-1 px-3">
+          {visibleMenuItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
@@ -968,22 +1195,35 @@ export default function App() {
                   setActiveTab(item.id);
                   setIsMobileMenuOpen(false); 
                 }}
-                className={`w-full flex items-center px-6 py-4 text-sm transition-colors ${
+                className={`w-full flex items-center px-4 py-3 text-sm rounded-xl transition-all duration-200 ${
                   isActive 
-                    ? 'bg-purple-600 text-white font-medium border-l-4 border-purple-400' 
-                    : 'text-gray-300 hover:bg-gray-700 hover:text-white border-l-4 border-transparent'
+                    ? 'bg-white/20 text-white font-medium shadow-inner' 
+                    : 'text-fuchsia-200 hover:bg-white/10 hover:text-white'
                 }`}
               >
-                <Icon className={`w-5 h-5 mr-3 ${isActive ? 'text-white' : 'text-gray-400'}`} />
+                <Icon className={`w-5 h-5 mr-3 ${isActive ? 'text-pink-300' : 'text-fuchsia-300'}`} />
                 {item.label}
               </button>
             );
           })}
         </nav>
 
-        <div className="p-4 bg-gray-900 text-xs text-center text-gray-500 flex flex-col items-center">
+        <div className="p-4 mt-auto">
+          <div className="bg-white/5 border border-white/10 rounded-xl p-3 mb-4 text-center">
+            <p className="text-xs text-fuchsia-200 mb-1">Masuk Sebagai:</p>
+            <p className="text-sm font-bold text-white">{authUser.name}</p>
+          </div>
+          <button 
+            onClick={() => setIsLogoutModalOpen(true)}
+            className="w-full flex items-center justify-center px-4 py-2.5 bg-black/20 hover:bg-black/40 text-fuchsia-100 text-sm rounded-xl transition-colors duration-200"
+          >
+            <LogOut className="w-4 h-4 mr-2" /> Keluar
+          </button>
+        </div>
+
+        <div className="p-4 bg-black/30 text-xs text-center text-fuchsia-200 flex flex-col items-center">
           Versi Cloud DB (Lavender)
-          <span className={`mt-1 inline-block w-2 h-2 rounded-full ${dbConnected ? 'bg-green-500' : 'bg-yellow-500'}`} title={dbConnected ? "Database Terhubung" : "Menunggu Koneksi"}></span>
+          <span className={`mt-1.5 inline-block w-2 h-2 rounded-full shadow-[0_0_8px_rgba(0,0,0,0.5)] ${dbConnected ? 'bg-green-400 shadow-green-400/50' : 'bg-yellow-400 shadow-yellow-400/50'}`} title={dbConnected ? "Database Terhubung" : "Menunggu Koneksi"}></span>
         </div>
       </div>
 
@@ -992,12 +1232,12 @@ export default function App() {
           <div className="flex items-center">
             <button 
               onClick={() => setIsMobileMenuOpen(true)}
-              className="md:hidden mr-3 text-gray-600 hover:text-purple-600 focus:outline-none"
+              className="md:hidden mr-3 text-purple-900 hover:text-pink-600 focus:outline-none"
             >
               <Menu className="w-6 h-6" />
             </button>
             <h2 className="text-lg md:text-xl font-semibold text-gray-800">
-              {menuItems.find(m => m.id === activeTab)?.label}
+              {visibleMenuItems.find(m => m.id === activeTab)?.label}
             </h2>
           </div>
           <div className={`text-xs md:text-sm font-medium px-3 py-1.5 md:px-4 md:py-2 rounded-full flex items-center ${dbConnected ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50'}`}>
@@ -1024,6 +1264,7 @@ export default function App() {
               rooms={rooms} 
               invoiceCount={invoices.length}
               saveToDb={saveToDb} 
+              currentUser={authUser}
             />
           )}
           
@@ -1032,6 +1273,7 @@ export default function App() {
               invoices={invoices} 
               onPrint={(inv) => setPrintInvoiceData(inv)}
               deleteFromDb={deleteFromDb}
+              role={authUser.role}
             />
           )}
         </main>
