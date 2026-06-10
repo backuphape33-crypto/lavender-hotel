@@ -529,7 +529,7 @@ const PrintLayout = ({ invoice, onCancel }) => {
           @media print {
             @page { 
               size: A4; 
-              margin: 12mm 12mm 12mm 12mm; 
+              margin: 0; /* Margin 0 ini yang akan menghilangkan tanggal, judul, dan link vercel otomatis */
             }
             body {
               -webkit-print-color-adjust: exact;
@@ -539,7 +539,7 @@ const PrintLayout = ({ invoice, onCancel }) => {
             #invoice-print-area {
               width: 100% !important;
               max-width: 100% !important;
-              padding: 0 !important;
+              padding: 15mm !important; /* Memberi jarak batas tepi agar aman & tidak terpotong printer */
               margin: 0 !important;
               box-shadow: none !important;
             }
@@ -568,7 +568,7 @@ const PrintLayout = ({ invoice, onCancel }) => {
             </div>
           </div>
           <div className="text-right">
-            <h2 className="text-2xl sm:text-3xl font-black text-purple-600 tracking-widest uppercase">INVOICE</h2>
+            <h2 className="text-2xl sm:text-3xl font-normal text-gray-500 tracking-widest uppercase">INVOICE</h2>
             <p className="text-purple-600 font-bold mt-1 text-xs sm:text-sm">{invoice.invoiceNumber}</p>
             <p className="text-gray-500 text-[10px] sm:text-xs mt-1">Dicetak: {formatTanggalWaktu(invoice.printDate)}</p>
           </div>
