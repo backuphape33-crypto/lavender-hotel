@@ -812,6 +812,7 @@ export default function App() {
 
   const [user, setUser] = useState(null);
   const [dbConnected, setDbConnected] = useState(false);
+  const [debugMsg, setDebugMsg] = useState('Memeriksa koneksi ke Cloud Database...');
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -834,7 +835,13 @@ export default function App() {
   }, [activeTab]);
 
   useEffect(() => {
+    if (!db) {
+      setDebugMsg("🔴 Kunci API (Environment Variables) tidak terbaca. Pastikan sudah di-Redeploy di Vercel tanpa cache.");
+      return;
+    }
+    
     if (!auth) return;
+
     const initAuth = async () => {
       try {
         if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
@@ -844,10 +851,23 @@ export default function App() {
         }
       } catch (err) {
         console.error("Auth error:", err);
+        if (err.message.includes('auth/unauthorized-domain')) {
+          setDebugMsg(`🔴 Akses Ditolak: Tambahkan domain "${window.location.hostname}" ke menu Authorized Domains di Firebase.`);
+        } else if (err.message.includes('configuration-not-found')) {
+           setDebugMsg(`🔴 Akses Ditolak: Aktifkan opsi "Anonymous" di menu Sign-in Method Firebase.`);
+        } else {
+          setDebugMsg(`🔴 Error Login Database: ${err.message}`);
+        }
       }
     };
     initAuth();
-    const unsubscribe = onAuthStateChanged(auth, setUser);
+
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        setDebugMsg("🟢 Terhubung ke Cloud Database!");
+      }
+    });
     return () => unsubscribe();
   }, []);
 
@@ -984,6 +1004,13 @@ export default function App() {
              <span className="hidden sm:inline">Status: </span> {dbConnected ? 'Online' : 'Offline'}
           </div>
         </header>
+
+        {/* --- BANNER DIAGNOSIS ERROR --- */}
+        {!dbConnected && (
+          <div className="bg-red-50 border-b border-red-200 px-4 py-3 text-center text-xs md:text-sm text-red-700 font-medium">
+            {debugMsg}
+          </div>
+        )}
 
         <main className="p-4 md:p-8">
           {activeTab === 'dashboard' && <Dashboard />}
