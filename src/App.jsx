@@ -11,7 +11,9 @@ import {
   Save,
   X,
   CheckCircle,
-  Menu
+  Menu,
+  Download,
+  AlertCircle
 } from 'lucide-react';
 
 // --- IMPORT FIREBASE ---
@@ -78,7 +80,7 @@ const DEFAULT_ROOMS = [
   { id: 16, number: '215', type: 'VIP 1', price: 325000 },
   { id: 17, number: '216', type: 'VIP 1', price: 325000 },
   { id: 18, number: '217', type: 'VIP 1', price: 325000 },
-  { id: 19, number: '218', text: 'VIP 1', price: 325000 },
+  { id: 19, number: '218', type: 'VIP 1', price: 325000 },
   { id: 20, number: '219', type: 'VIP 1', price: 325000 },
   { id: 21, number: '220', type: 'VIP 1', price: 325000 },
   { id: 22, number: '221', type: 'VIP 1', price: 325000 },
@@ -165,6 +167,7 @@ const Dashboard = () => {
 const RoomManager = ({ rooms, setRooms, saveToDb, deleteFromDb }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [currentRoom, setCurrentRoom] = useState({ id: null, number: '', type: 'VIP 1', price: '' });
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -173,14 +176,43 @@ const RoomManager = ({ rooms, setRooms, saveToDb, deleteFromDb }) => {
     const roomData = { ...currentRoom, price: Number(currentRoom.price) };
     if (!roomData.id) roomData.id = Date.now();
 
-    await saveToDb('rooms', roomData);
-    
-    setIsEditing(false);
-    setCurrentRoom({ id: null, number: '', type: 'VIP 1', price: '' });
+    try {
+      await saveToDb('rooms', roomData);
+      setIsEditing(false);
+      setCurrentRoom({ id: null, number: '', type: 'VIP 1', price: '' });
+    } catch (err) {
+      setErrorMsg(err.message);
+      setTimeout(() => setErrorMsg(''), 5000);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      await deleteFromDb('rooms', id);
+    } catch (err) {
+      setErrorMsg(err.message);
+      setTimeout(() => setErrorMsg(''), 5000);
+    }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 relative">
+      
+      {errorMsg && (
+        <div className="fixed bottom-6 right-6 bg-white shadow-2xl rounded-2xl border border-red-100 p-4 flex items-center z-50 animate-fade-in-up">
+          <div className="bg-red-100 p-2.5 rounded-full mr-4">
+            <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+          </div>
+          <div className="mr-6">
+            <p className="font-bold text-gray-800 text-sm mb-0.5">Aksi Gagal</p>
+            <p className="text-gray-500 text-xs">{errorMsg}</p>
+          </div>
+          <button onClick={() => setErrorMsg('')} className="text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 p-1.5 rounded-full transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-white p-6 rounded-xl shadow-sm gap-4">
         <div>
           <h2 className="text-2xl font-bold text-gray-800">Data Kamar</h2>
@@ -267,7 +299,7 @@ const RoomManager = ({ rooms, setRooms, saveToDb, deleteFromDb }) => {
                     <button onClick={() => { setCurrentRoom(room); setIsEditing(true); }} className="text-purple-600 hover:text-purple-900 mr-2 sm:mr-4 inline-flex items-center">
                       <Edit className="w-4 h-4 sm:mr-1" /> <span className="hidden sm:inline">Edit</span>
                     </button>
-                    <button onClick={() => deleteFromDb('rooms', room.id)} className="text-red-600 hover:text-red-900 inline-flex items-center">
+                    <button onClick={() => handleDelete(room.id)} className="text-red-600 hover:text-red-900 inline-flex items-center">
                       <Trash2 className="w-4 h-4 sm:mr-1" /> <span className="hidden sm:inline">Hapus</span>
                     </button>
                   </td>
@@ -283,6 +315,7 @@ const RoomManager = ({ rooms, setRooms, saveToDb, deleteFromDb }) => {
 
 const CreateInvoice = ({ rooms, invoiceCount, saveToDb }) => {
   const [successMsg, setSuccessMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
   const [formData, setFormData] = useState({
     guestName: '', guestPhone: '', guestAddress: '', checkIn: '', checkOut: '', roomId: '',
     discount: 0, extraBed: 0
@@ -317,22 +350,24 @@ const CreateInvoice = ({ rooms, invoiceCount, saveToDb }) => {
       total: total
     };
 
-    await saveToDb('invoices', newInvoice);
-
-    setSuccessMsg(`Invoice ${newInvoice.invoiceNumber} berhasil dibuat dan disimpan!`);
-    setTimeout(() => {
-      setSuccessMsg('');
-    }, 5000);
-
-    setFormData({
-      guestName: '', guestPhone: '', guestAddress: '', checkIn: '', checkOut: '', roomId: '',
-      discount: 0, extraBed: 0
-    });
+    try {
+      await saveToDb('invoices', newInvoice);
+      setSuccessMsg(`Invoice ${newInvoice.invoiceNumber} berhasil dibuat dan disimpan!`);
+      setTimeout(() => setSuccessMsg(''), 5000);
+      setFormData({
+        guestName: '', guestPhone: '', guestAddress: '', checkIn: '', checkOut: '', roomId: '',
+        discount: 0, extraBed: 0
+      });
+    } catch (err) {
+      setErrorMsg(err.message);
+      setTimeout(() => setErrorMsg(''), 6000);
+    }
   };
 
   return (
     <div className="bg-white rounded-xl shadow-sm overflow-hidden relative">
       
+      {/* Notifikasi Sukses */}
       {successMsg && (
         <div className="fixed bottom-6 right-6 bg-white shadow-2xl rounded-2xl border border-green-100 p-4 flex items-center z-50 animate-fade-in-up">
           <div className="bg-green-100 p-2.5 rounded-full mr-4">
@@ -343,6 +378,22 @@ const CreateInvoice = ({ rooms, invoiceCount, saveToDb }) => {
             <p className="text-gray-500 text-xs">{successMsg}</p>
           </div>
           <button onClick={() => setSuccessMsg('')} className="text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 p-1.5 rounded-full transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Notifikasi Gagal (Merah) */}
+      {errorMsg && (
+        <div className="fixed bottom-6 right-6 bg-white shadow-2xl rounded-2xl border border-red-100 p-4 flex items-center z-50 animate-fade-in-up">
+          <div className="bg-red-100 p-2.5 rounded-full mr-4">
+            <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+          </div>
+          <div className="mr-6">
+            <p className="font-bold text-gray-800 text-sm mb-0.5">Gagal Menyimpan Invoice</p>
+            <p className="text-gray-500 text-xs">{errorMsg}</p>
+          </div>
+          <button onClick={() => setErrorMsg('')} className="text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 p-1.5 rounded-full transition-colors">
             <X className="w-4 h-4" />
           </button>
         </div>
@@ -477,15 +528,30 @@ const CreateInvoice = ({ rooms, invoiceCount, saveToDb }) => {
 const InvoiceHistory = ({ invoices, onPrint, deleteFromDb }) => {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [toastMsg, setToastMsg] = useState('');
+  const [errorMsg, setErrorMsg] = useState('');
 
   const confirmDelete = async () => {
     if (!deleteConfirm) return;
-    await deleteFromDb('invoices', deleteConfirm.id);
-    setToastMsg(`Invoice ${deleteConfirm.invoiceNumber} berhasil dihapus.`);
-    setDeleteConfirm(null);
-    setTimeout(() => {
-      setToastMsg('');
-    }, 5000);
+    try {
+      await deleteFromDb('invoices', deleteConfirm.id);
+      setToastMsg(`Invoice ${deleteConfirm.invoiceNumber} berhasil dihapus.`);
+      setDeleteConfirm(null);
+      setTimeout(() => setToastMsg(''), 5000);
+    } catch (err) {
+      setErrorMsg(err.message);
+      setDeleteConfirm(null);
+      setTimeout(() => setErrorMsg(''), 6000);
+    }
+  };
+
+  const handleExport = () => {
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(invoices, null, 2));
+    const downloadAnchorNode = document.createElement('a');
+    downloadAnchorNode.setAttribute("href", dataStr);
+    downloadAnchorNode.setAttribute("download", `backup_invoice_hotel_${new Date().getTime()}.json`);
+    document.body.appendChild(downloadAnchorNode);
+    downloadAnchorNode.click();
+    downloadAnchorNode.remove();
   };
 
   return (
@@ -526,9 +592,30 @@ const InvoiceHistory = ({ invoices, onPrint, deleteFromDb }) => {
         </div>
       )}
 
-      <div className="p-4 sm:p-6 border-b border-gray-100">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Riwayat Invoice</h2>
-        <p className="text-gray-500 text-xs sm:text-sm mt-1">Daftar semua invoice yang pernah diterbitkan.</p>
+      {/* Toast Notifikasi Gagal Hapus */}
+      {errorMsg && (
+        <div className="fixed bottom-6 right-6 bg-white shadow-2xl rounded-2xl border border-red-100 p-4 flex items-center z-50 animate-fade-in-up">
+          <div className="bg-red-100 p-2.5 rounded-full mr-4">
+            <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
+          </div>
+          <div className="mr-6">
+            <p className="font-bold text-gray-800 text-sm mb-0.5">Gagal Menghapus</p>
+            <p className="text-gray-500 text-xs">{errorMsg}</p>
+          </div>
+          <button onClick={() => setErrorMsg('')} className="text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 p-1.5 rounded-full transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      <div className="p-4 sm:p-6 border-b border-gray-100 flex justify-between items-center">
+        <div>
+          <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Riwayat Invoice</h2>
+          <p className="text-gray-500 text-xs sm:text-sm mt-1">Daftar semua invoice yang pernah diterbitkan.</p>
+        </div>
+        <button onClick={handleExport} className="flex items-center px-3 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors shadow-sm">
+          <Download className="w-4 h-4 mr-2" /> <span className="hidden sm:inline">Backup Data</span>
+        </button>
       </div>
       
       <div className="overflow-x-auto">
@@ -791,33 +878,19 @@ export default function App() {
   }, [user]);
 
   const saveToDb = async (collectionName, data) => {
-    try {
-      if (db && user) {
-        const docRef = doc(db, 'artifacts', appId, 'public', 'data', collectionName, data.id.toString());
-        await setDoc(docRef, data);
-      } else {
-        throw new Error("Koneksi DB belum siap");
-      }
-    } catch (error) {
-      console.warn(`Database cloud tertunda (${collectionName}), menyimpan sementara ke memori lokal...`);
-      if (collectionName === 'invoices') setInvoices(prev => [...prev.filter(i => i.id !== data.id), data]);
-      if (collectionName === 'rooms') setRooms(prev => [...prev.filter(r => r.id !== data.id), data]);
+    if (!db || !user) {
+      throw new Error("Sistem belum terhubung ke Cloud Database. Cek koneksi internet atau setelan Firebase Anda.");
     }
+    const docRef = doc(db, 'artifacts', appId, 'public', 'data', collectionName, data.id.toString());
+    await setDoc(docRef, data);
   };
 
   const deleteFromDb = async (collectionName, id) => {
-    try {
-      if (db && user) {
-        const docRef = doc(db, 'artifacts', appId, 'public', 'data', collectionName, id.toString());
-        await deleteDoc(docRef);
-      } else {
-        throw new Error("Koneksi DB belum siap");
-      }
-    } catch (error) {
-      console.warn(`Penghapusan cloud tertunda (${collectionName}), menghapus dari memori lokal...`);
-      if (collectionName === 'invoices') setInvoices(prev => prev.filter(i => i.id !== id));
-      if (collectionName === 'rooms') setRooms(prev => prev.filter(r => r.id !== id));
+    if (!db || !user) {
+      throw new Error("Sistem belum terhubung ke Cloud Database. Cek koneksi internet atau setelan Firebase Anda.");
     }
+    const docRef = doc(db, 'artifacts', appId, 'public', 'data', collectionName, id.toString());
+    await deleteDoc(docRef);
   };
 
   return (
@@ -880,7 +953,7 @@ export default function App() {
 
         <div className="p-4 bg-gray-900 text-xs text-center text-gray-500 flex flex-col items-center">
           Versi Cloud DB (Lavender)
-          <span className={`mt-1 inline-block w-2 h-2 rounded-full ${dbConnected ? 'bg-green-500' : 'bg-yellow-500'}`} title={dbConnected ? "Database Terhubung" : "Mode Memori Lokal"}></span>
+          <span className={`mt-1 inline-block w-2 h-2 rounded-full ${dbConnected ? 'bg-green-500' : 'bg-yellow-500'}`} title={dbConnected ? "Database Terhubung" : "Menunggu Koneksi"}></span>
         </div>
       </div>
 
@@ -897,8 +970,8 @@ export default function App() {
               {menuItems.find(m => m.id === activeTab)?.label}
             </h2>
           </div>
-          <div className={`text-xs md:text-sm font-medium px-3 py-1.5 md:px-4 md:py-2 rounded-full flex items-center ${dbConnected ? 'text-green-700 bg-green-50' : 'text-purple-600 bg-purple-50'}`}>
-             <span className="hidden sm:inline">Status: </span> {dbConnected ? 'Online' : 'Aktif'}
+          <div className={`text-xs md:text-sm font-medium px-3 py-1.5 md:px-4 md:py-2 rounded-full flex items-center ${dbConnected ? 'text-green-700 bg-green-50' : 'text-red-700 bg-red-50'}`}>
+             <span className="hidden sm:inline">Status: </span> {dbConnected ? 'Online' : 'Offline'}
           </div>
         </header>
 
