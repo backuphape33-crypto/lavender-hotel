@@ -878,34 +878,22 @@ export default function App() {
   }, [user]);
 
   const saveToDb = async (collectionName, data) => {
-    if (!db) {
-      throw new Error("Kunci Firebase (API Key) salah/tidak terdeteksi di Vercel.");
-    }
-    if (!user) {
-      throw new Error("Fitur Login Anonim (Authentication) belum aktif di Firebase.");
-    }
-    
-    try {
+    if (db) {
       const docRef = doc(db, 'artifacts', appId, 'public', 'data', collectionName, data.id.toString());
       await setDoc(docRef, data);
-    } catch (err) {
-      throw new Error(err.message.includes("permission") ? "Aturan Database (Rules) belum di-Publish." : `Gagal: ${err.message}`);
+    } else {
+      if (collectionName === 'invoices') setInvoices(prev => [...prev.filter(i => i.id !== data.id), data]);
+      if (collectionName === 'rooms') setRooms(prev => [...prev.filter(r => r.id !== data.id), data]);
     }
   };
 
   const deleteFromDb = async (collectionName, id) => {
-    if (!db) {
-      throw new Error("Kunci Firebase (API Key) salah/tidak terdeteksi di Vercel.");
-    }
-    if (!user) {
-      throw new Error("Fitur Login Anonim (Authentication) belum aktif di Firebase.");
-    }
-
-    try {
+    if (db) {
       const docRef = doc(db, 'artifacts', appId, 'public', 'data', collectionName, id.toString());
       await deleteDoc(docRef);
-    } catch (err) {
-      throw new Error(err.message.includes("permission") ? "Aturan Database (Rules) belum di-Publish." : `Gagal: ${err.message}`);
+    } else {
+      if (collectionName === 'invoices') setInvoices(prev => prev.filter(i => i.id !== id));
+      if (collectionName === 'rooms') setRooms(prev => prev.filter(r => r.id !== id));
     }
   };
 
