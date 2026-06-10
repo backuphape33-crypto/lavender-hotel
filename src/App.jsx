@@ -879,6 +879,9 @@ export default function App() {
 
   const saveToDb = async (collectionName, data) => {
     if (db) {
+      if (!user) {
+        throw new Error("Akses ditolak Firebase: Pastikan Domain Vercel Anda sudah ditambahkan ke menu Authorized Domains di Firebase Authentication.");
+      }
       const docRef = doc(db, 'artifacts', appId, 'public', 'data', collectionName, data.id.toString());
       await setDoc(docRef, data);
     } else {
@@ -889,6 +892,9 @@ export default function App() {
 
   const deleteFromDb = async (collectionName, id) => {
     if (db) {
+      if (!user) {
+        throw new Error("Akses ditolak Firebase: Pastikan Domain Vercel Anda sudah ditambahkan ke menu Authorized Domains di Firebase Authentication.");
+      }
       const docRef = doc(db, 'artifacts', appId, 'public', 'data', collectionName, id.toString());
       await deleteDoc(docRef);
     } else {
