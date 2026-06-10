@@ -11,8 +11,7 @@ import {
   Save,
   X,
   CheckCircle,
-  Menu,
-  Download
+  Menu
 } from 'lucide-react';
 
 // --- IMPORT FIREBASE ---
@@ -335,9 +334,17 @@ const CreateInvoice = ({ rooms, invoiceCount, saveToDb }) => {
     <div className="bg-white rounded-xl shadow-sm overflow-hidden relative">
       
       {successMsg && (
-        <div className="absolute top-0 left-0 right-0 bg-green-500 text-white p-4 flex items-center justify-center font-medium z-10 animate-fade-in-down text-center text-sm sm:text-base">
-          <CheckCircle className="w-5 h-5 mr-2 shrink-0" />
-          {successMsg}
+        <div className="fixed bottom-6 right-6 bg-white shadow-2xl rounded-2xl border border-green-100 p-4 flex items-center z-50 animate-fade-in-up">
+          <div className="bg-green-100 p-2.5 rounded-full mr-4">
+            <CheckCircle className="w-5 h-5 text-green-600 shrink-0" />
+          </div>
+          <div className="mr-6">
+            <p className="font-bold text-gray-800 text-sm mb-0.5">Berhasil Disimpan!</p>
+            <p className="text-gray-500 text-xs">{successMsg}</p>
+          </div>
+          <button onClick={() => setSuccessMsg('')} className="text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 p-1.5 rounded-full transition-colors">
+            <X className="w-4 h-4" />
+          </button>
         </div>
       )}
 
@@ -468,8 +475,57 @@ const CreateInvoice = ({ rooms, invoiceCount, saveToDb }) => {
 };
 
 const InvoiceHistory = ({ invoices, onPrint, deleteFromDb }) => {
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [toastMsg, setToastMsg] = useState('');
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm) return;
+    await deleteFromDb('invoices', deleteConfirm.id);
+    setToastMsg(`Invoice ${deleteConfirm.invoiceNumber} berhasil dihapus.`);
+    setDeleteConfirm(null);
+    setTimeout(() => {
+      setToastMsg('');
+    }, 5000);
+  };
+
   return (
-    <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
+    <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100 relative">
+      
+      {/* Modal Konfirmasi Hapus */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-red-50 mb-4 mx-auto">
+              <Trash2 className="w-6 h-6 text-red-500" />
+            </div>
+            <h3 className="text-lg font-bold text-center text-gray-900 mb-2">Hapus Invoice?</h3>
+            <p className="text-sm text-center text-gray-500 mb-6">
+              Anda yakin ingin menghapus invoice <span className="font-bold text-gray-700">{deleteConfirm.invoiceNumber}</span>? Tindakan ini tidak dapat dibatalkan.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteConfirm(null)} className="flex-1 px-4 py-2.5 bg-gray-100 text-gray-700 font-semibold text-sm rounded-xl hover:bg-gray-200 transition-colors">Batal</button>
+              <button onClick={confirmDelete} className="flex-1 px-4 py-2.5 bg-red-600 text-white font-semibold text-sm rounded-xl hover:bg-red-700 transition-colors">Ya, Hapus</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notifikasi Berhasil Hapus */}
+      {toastMsg && (
+        <div className="fixed bottom-6 right-6 bg-white shadow-2xl rounded-2xl border border-green-100 p-4 flex items-center z-50 animate-fade-in-up">
+          <div className="bg-green-100 p-2.5 rounded-full mr-4">
+            <CheckCircle className="w-5 h-5 text-green-600 shrink-0" />
+          </div>
+          <div className="mr-6">
+            <p className="font-bold text-gray-800 text-sm mb-0.5">Berhasil Dihapus!</p>
+            <p className="text-gray-500 text-xs">{toastMsg}</p>
+          </div>
+          <button onClick={() => setToastMsg('')} className="text-gray-400 hover:text-gray-600 bg-gray-50 hover:bg-gray-100 p-1.5 rounded-full transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
       <div className="p-4 sm:p-6 border-b border-gray-100">
         <h2 className="text-xl sm:text-2xl font-bold text-gray-800">Riwayat Invoice</h2>
         <p className="text-gray-500 text-xs sm:text-sm mt-1">Daftar semua invoice yang pernah diterbitkan.</p>
@@ -506,7 +562,7 @@ const InvoiceHistory = ({ invoices, onPrint, deleteFromDb }) => {
                   <button onClick={() => onPrint(inv)} className="text-gray-600 hover:text-purple-600 bg-gray-100 hover:bg-purple-50 p-1.5 sm:px-3 sm:py-1.5 rounded-md inline-flex items-center transition-colors" title="Cetak">
                     <Printer className="w-4 h-4 sm:mr-1.5" /> <span className="hidden sm:inline">Cetak</span>
                   </button>
-                  <button onClick={() => deleteFromDb('invoices', inv.id)} className="text-red-600 hover:text-red-900 bg-red-50 p-1.5 sm:px-2 sm:py-1.5 rounded-md inline-flex items-center transition-colors" title="Hapus">
+                  <button onClick={() => setDeleteConfirm(inv)} className="text-red-600 hover:text-red-900 bg-red-50 p-1.5 sm:px-2 sm:py-1.5 rounded-md inline-flex items-center transition-colors" title="Hapus">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </td>
