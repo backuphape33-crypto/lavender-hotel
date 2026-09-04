@@ -99,6 +99,13 @@ const DEFAULT_ROOMS = [
   { id: 30, number: '238', type: 'Standart 2', price: 150000 }
 ];
 
+const getDisplayRoomType = (type) => {
+  if (!type) return '';
+  if (type === 'VIP 1') return 'Deluxe';
+  if (type === 'VIP 2') return 'Superior';
+  return type;
+};
+
 const formatRupiah = (number) => {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',
@@ -391,7 +398,7 @@ const RoomManager = ({ rooms, setRooms, saveToDb, deleteFromDb }) => {
               ) : rooms.map((room) => (
                 <tr key={room.id} className="hover:bg-gray-50">
                   <td className="px-4 sm:px-6 py-4 whitespace-nowrap font-medium text-gray-900">{room.number}</td>
-                  <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-gray-600">{room.type}</td>
+                  <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-gray-600">{getDisplayRoomType(room.type)}</td>
                   <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-gray-600">{formatRupiah(room.price)}</td>
                   <td className="px-4 sm:px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <button onClick={() => { setCurrentRoom(room); setIsEditing(true); }} className="text-purple-600 hover:text-purple-900 mr-2 sm:mr-4 inline-flex items-center">
@@ -473,7 +480,7 @@ const CreateInvoice = ({ rooms, invoiceCount, saveToDb, currentUser }) => {
       const selected = rooms.find(room => room.id.toString() === r.roomId);
       return {
         roomNumber: selected.number,
-        roomType: selected.type,
+        roomType: getDisplayRoomType(selected.type),
         roomPrice: selected.price,
         extraBed: Number(r.extraBed),
         discount: Number(r.discount),
@@ -657,7 +664,7 @@ const CreateInvoice = ({ rooms, invoiceCount, saveToDb, currentUser }) => {
                         >
                           <option value="">-- Pilih Nomor Kamar --</option>
                           {rooms.map(room => (
-                            <option key={room.id} value={room.id}>Kamar {room.number} - {room.type} ({formatRupiah(room.price)})</option>
+                            <option key={room.id} value={room.id}>Kamar {room.number} - {getDisplayRoomType(room.type)} ({formatRupiah(room.price)})</option>
                           ))}
                         </select>
                       </div>
@@ -908,12 +915,12 @@ const InvoiceHistory = ({ invoices, onPrint, deleteFromDb, saveToDb, role }) => 
               const isVoid = inv.paymentStatus === 'Void';
 
               // Handle Multiple Rooms Logic for UI
-              let roomDesc = `Kamar ${inv.roomNumber} (${inv.roomType})`;
+              let roomDesc = `Kamar ${inv.roomNumber} (${getDisplayRoomType(inv.roomType)})`;
               if (inv.roomDetails && inv.roomDetails.length > 1) {
                 const roomNumbers = inv.roomDetails.map(r => r.roomNumber).join(', ');
                 roomDesc = `Kamar ${roomNumbers} (${inv.roomDetails.length} Kamar)`;
               } else if (inv.roomDetails && inv.roomDetails.length === 1) {
-                roomDesc = `Kamar ${inv.roomDetails[0].roomNumber} (${inv.roomDetails[0].roomType})`;
+                roomDesc = `Kamar ${inv.roomDetails[0].roomNumber} (${getDisplayRoomType(inv.roomDetails[0].roomType)})`;
               }
 
               return (
@@ -1070,7 +1077,7 @@ const PrintLayout = ({ invoice, onCancel, currentUser }) => {
                   <tr key={idx} className="border-b border-gray-100 last:border-0">
                     <td className="py-3 px-2 text-gray-800">
                       <span className="font-bold text-purple-900 block">Kamar {room.roomNumber}</span>
-                      <span className="text-gray-500 text-xs">{room.roomType}</span>
+                      <span className="text-gray-500 text-xs">{getDisplayRoomType(room.roomType)}</span>
                     </td>
                     <td className="py-3 px-2 text-center text-gray-800 align-top">{invoice.nights}</td>
                     <td className="py-3 px-2 text-right text-gray-800 align-top">{formatRupiah(room.roomPrice)}</td>
@@ -1089,7 +1096,7 @@ const PrintLayout = ({ invoice, onCancel, currentUser }) => {
                 <tr>
                   <td className="py-3 px-2 text-gray-800">
                     <span className="font-bold text-purple-900 block">Kamar {invoice.roomNumber}</span>
-                    <span className="text-gray-500 text-xs">{invoice.roomType}</span>
+                    <span className="text-gray-500 text-xs">{getDisplayRoomType(invoice.roomType)}</span>
                   </td>
                   <td className="py-3 px-2 text-center text-gray-800 align-top">{invoice.nights}</td>
                   <td className="py-3 px-2 text-right text-gray-800 align-top">{formatRupiah(invoice.roomPrice)}</td>
